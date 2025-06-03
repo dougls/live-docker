@@ -1,0 +1,48 @@
+version: '3.8'
+
+networks:
+  fiapnet:
+
+volumes:
+  dbdados:
+
+services:
+  db:
+    image: postgres:15 # dockerhub
+    environment:
+      POSTGRES_USER: "userfiap"
+      POSTGRES_PASSWORD: "postech"
+      POSTGRES_DB: "fiap"
+    volumes:
+      - dbdados:/var/lib/postgresql/data
+    networks:
+      - fiapnet
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h db -U userfiap"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  app1:
+    build: ./app1
+    depends_on:
+      #- app2
+      app2:
+        condition: service_healthy
+    networks:
+      - fiapnet
+  app2:
+    build: ./app2
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://userfiap:postech@db:5432/fiap
+    networks:
+      - fiapnet
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+  
